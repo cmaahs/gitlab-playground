@@ -1,0 +1,4 @@
+gitlab-runner:
+  gitlabUrl: https://git.maahsome.rocks/
+  runnerRegistrationToken: ""
+

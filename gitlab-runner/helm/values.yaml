@@ -1,0 +1,119 @@
+gitlab-runner:
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  nodeSelector: {}
+    #    type: edge
+  affinity:
+    nodeAffinity:
+#      preferredDuringSchedulingIgnoredDuringExecution:
+#        - weight: 1
+#          preference:
+#            matchExpressions:
+#              - key: type
+#                operator: In
+#                values:
+#                  - runners-arm64
+    podAntiAffinity:
+      #      preferredDuringSchedulingIgnoredDuringExecution:
+      #  - weight: 100
+      #    podAffinityTerm:
+      #      labelSelector:
+      #        matchExpressions:
+      #          - key: app
+      #            operator: In
+      #            values:
+      #              - core-gitlab-runners-gitlab-runner
+      #      topologyKey: "kubernetes.io/hostname"
+  revisionHistoryLimit: 10
+  gitlabUrl: https://gitlab.com/
+  runnerRegistrationToken: ""
+  terminationGracePeriodSeconds: 3600
+  concurrent: 10
+  checkInterval: 30
+  resources:
+    limits:
+     memory: 256Mi
+     cpu: 200m
+    requests:
+     memory: 64Mi
+     cpu: 50m
+  rbac:
+    create: true
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["list", "get", "watch", "create", "delete"]
+      - apiGroups: [""]
+        resources: ["pods/exec"]
+        verbs: ["create"]
+      - apiGroups: [""]
+        resources: ["pods/log"]
+        verbs: ["get"]
+      - apiGroups: [""]
+        resources: ["pods/attach"]
+        verbs: ["get","create"]
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["get","watch","list","create","delete","update"]
+      - apiGroups: [""]
+        resources: ["configmaps"]
+        verbs: ["update","get","watch","list","create","delete"]
+    clusterWideAccess: false
+    podSecurityPolicy:
+      enabled: false
+      resourceNames:
+      - core-shared-services
+  metrics:
+    enabled: true
+  runners:
+    config: |
+      [[runners]]
+        [runners.kubernetes]
+          namespace = "{{.Release.Namespace}}"
+          image = "ubuntu:16.04"
+
+          # Requests and Limits, suitable for Terraform workload.
+          # Set for 2 concurrent containers on 2 cores / 4G
+          # The running containers add up. We currently have 2: build and helper.
+          # build container
+          cpu_request = ".53"
+          memory_request = "1.4Gi"
+          cpu_limit = "1.9"
+          memory_limit = "1.4Gi"
+
+          # service containers
+          service_cpu_request = ".2"
+          service_memory_request = "32Mi"
+          service_cpu_limit = ".5"
+          service_memory_limit = "64Mi"
+
+          # helper container
+          helper_cpu_request = ".2"
+          helper_memory_request = "32Mi"
+          helper_cpu_limit = ".5"
+          helper_memory_limit = "64Mi"
+          # [runners.kubernetes.node_selector]
+          # type = "workers-amd64"
+          [runners.kubernetes.pod_annotations]
+            'cluster-autoscaler.kubernetes.io/safe-to-evict' = "false"
+          [runners.kubernetes.affinity]
+            [runners.kubernetes.affinity.node_affinity]
+              [runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution]
+                [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms]]
+                  [[runners.kubernetes.affinity.node_affinity.required_during_scheduling_ignored_during_execution.node_selector_terms.match_expressions]]
+                    key = "type"
+                    operator = "In"
+                    values = ["workers-amd64"]
+              [[runners.kubernetes.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution]]
+                weight = 1
+                [runners.kubernetes.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution.preference]
+                  [[runners.kubernetes.affinity.node_affinity.preferred_during_scheduling_ignored_during_execution.preference.match_expressions]]
+                    key = "type"
+                    operator = "In"
+                    values = ["edge"]
+    tags: "dev"
+    secret: gitlab-token-core
+    imagePullSecrets:
+    - image-pull-secret
+  unregisterRunners: true
+

@@ -1,0 +1,11 @@
+terraform/.terraform/*
+terraform/.terraform.lock.hcl
+terraform/state/*
+terraform/plan.out
+helm/*.crt
+helm/*.key
+helm/*.tgz
+**/chart.lock
+**/helm/charts
+hover/update-hover-dns
+
